@@ -257,10 +257,10 @@ show_result() {
 
 show_banner() {
     echo ""
-    echo -e "${BLUE}╔═════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║     Liquid Glass Prism Agent Installer      ║${NC}"
-    echo -e "${BLUE}║     github.com/${REPO}  ║${NC}"
-    echo -e "${BLUE}╚═════════════════════════════════════════════╝${NC}"
+    echo -e "${BLUE}╔══════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║       Liquid Glass Prism Agent Installer         ║${NC}"
+    echo -e "${BLUE}║       github.com/mslxi/Liquid-Glass-Prism-dns    ║${NC}"
+    echo -e "${BLUE}╚══════════════════════════════════════════════════╝${NC}"
     echo ""
 }
 

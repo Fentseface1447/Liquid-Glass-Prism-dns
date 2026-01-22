@@ -240,10 +240,10 @@ do_uninstall() {
 
 show_menu() {
     echo ""
-    echo -e "${BLUE}╔═════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║     Liquid Glass Prism Gateway              ║${NC}"
-    echo -e "${BLUE}║     github.com/${REPO}  ║${NC}"
-    echo -e "${BLUE}╚═════════════════════════════════════════════╝${NC}"
+    echo -e "${BLUE}╔══════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║       Liquid Glass Prism Gateway                 ║${NC}"
+    echo -e "${BLUE}║       github.com/mslxi/Liquid-Glass-Prism-dns    ║${NC}"
+    echo -e "${BLUE}╚══════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "  1) Install    - Fresh installation"
     echo "  2) Upgrade    - Upgrade to latest version"
@@ -253,19 +253,21 @@ show_menu() {
 }
 
 main() {
-    while true; do
-        show_menu
-        
-        read -p "Select option [0-3]: " choice < /dev/tty
-        
-        case $choice in
-            1) do_install; break ;;
-            2) do_upgrade; break ;;
-            3) do_uninstall; break ;;
-            0) echo "Bye!"; exit 0 ;;
-            *) log_warn "Invalid option, please try again" ;;
-        esac
-    done
+    show_menu
+    
+    if [ -t 0 ]; then
+        read -p "Select option [0-3]: " choice
+    else
+        read -p "Select option [0-3]: " choice < /dev/tty || { echo "Error: Cannot read input. Run with: bash -s"; exit 1; }
+    fi
+    
+    case $choice in
+        1) do_install ;;
+        2) do_upgrade ;;
+        3) do_uninstall ;;
+        0) echo "Bye!"; exit 0 ;;
+        *) log_error "Invalid option" ;;
+    esac
 }
 
 main "$@"
