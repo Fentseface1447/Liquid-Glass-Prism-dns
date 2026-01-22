@@ -219,7 +219,7 @@ do_uninstall() {
     
     echo ""
     echo -e "${YELLOW}This will remove all data including database!${NC}"
-    read -p "Are you sure? (y/N): " confirm
+    read -p "Are you sure? (y/N): " confirm < /dev/tty
     if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
         log_info "Cancelled"
         return
@@ -256,7 +256,7 @@ main() {
     while true; do
         show_menu
         
-        read -p "Select option [0-3]: " choice
+        read -p "Select option [0-3]: " choice < /dev/tty
         
         case $choice in
             1) do_install; break ;;
