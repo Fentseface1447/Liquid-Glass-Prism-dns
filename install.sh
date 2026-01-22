@@ -176,10 +176,29 @@ do_install() {
     download_binary "$os" "$arch"
     create_env
     create_systemd_service
-    start_service
     
-    sleep 2
-    local password=$(journalctl -u ${SERVICE_NAME} --no-pager 2>/dev/null | grep -oP 'password=\K[a-zA-Z0-9]+' | tail -1)
+    log_info "Starting service and waiting for password..."
+    systemctl start ${SERVICE_NAME}
+    
+    local password=""
+    local timeout=30
+    local count=0
+    
+    while [ $count -lt $timeout ]; do
+        password=$(journalctl -u ${SERVICE_NAME} --no-pager 2>/dev/null | grep -oP 'password=\K[a-zA-Z0-9]+' | tail -1)
+        if [ -n "$password" ]; then
+            break
+        fi
+        sleep 1
+        count=$((count + 1))
+    done
+    
+    if ! systemctl is-active --quiet ${SERVICE_NAME}; then
+        log_error "Service failed to start. Check: journalctl -u ${SERVICE_NAME}"
+    fi
+    
+    log_success "Service started"
+    
     if [ -z "$password" ]; then
         password="Check: journalctl -u ${SERVICE_NAME} | grep password"
     fi
