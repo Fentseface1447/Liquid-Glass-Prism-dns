@@ -39,10 +39,6 @@ generate_secret() {
     cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1
 }
 
-generate_password() {
-    cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1
-}
-
 check_root() {
     if [ "$EUID" -ne 0 ]; then
         log_error "Please run as root (sudo)"
@@ -135,9 +131,9 @@ show_install_info() {
     local ip=$(get_local_ip)
     local password=$1
     echo ""
-    echo -e "${GREEN}════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}  Liquid Glass Prism Gateway Installed!     ${NC}"
-    echo -e "${GREEN}════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}   Liquid Glass Prism Gateway Installed!       ${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════════${NC}"
     echo ""
     echo -e "  Web UI:    ${BLUE}http://${ip}:8080${NC}"
     echo -e "  Username:  ${YELLOW}admin${NC}"
@@ -145,20 +141,20 @@ show_install_info() {
     echo ""
     echo -e "  ${RED}Please save your password!${NC}"
     echo ""
-    echo -e "${GREEN}════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════════${NC}"
 }
 
 show_upgrade_info() {
     local ip=$(get_local_ip)
     echo ""
-    echo -e "${GREEN}════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}  Upgrade Completed!                        ${NC}"
-    echo -e "${GREEN}════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}   Upgrade Completed!                          ${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════════${NC}"
     echo ""
     echo -e "  Web UI:    ${BLUE}http://${ip}:8080${NC}"
     echo -e "  Config:    Preserved"
     echo ""
-    echo -e "${GREEN}════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════════${NC}"
 }
 
 do_install() {
@@ -226,7 +222,7 @@ do_uninstall() {
     read -p "Are you sure? (y/N): " confirm
     if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
         log_info "Cancelled"
-        exit 0
+        return
     fi
     
     stop_service
@@ -244,10 +240,10 @@ do_uninstall() {
 
 show_menu() {
     echo ""
-    echo -e "${BLUE}╔═══════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║   Liquid Glass Prism Gateway              ║${NC}"
-    echo -e "${BLUE}║   github.com/${REPO}   ║${NC}"
-    echo -e "${BLUE}╚═══════════════════════════════════════════╝${NC}"
+    echo -e "${BLUE}╔═════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║     Liquid Glass Prism Gateway              ║${NC}"
+    echo -e "${BLUE}║     github.com/${REPO}  ║${NC}"
+    echo -e "${BLUE}╚═════════════════════════════════════════════╝${NC}"
     echo ""
     echo "  1) Install    - Fresh installation"
     echo "  2) Upgrade    - Upgrade to latest version"
@@ -257,17 +253,19 @@ show_menu() {
 }
 
 main() {
-    show_menu
-    
-    read -p "Select option [0-3]: " choice
-    
-    case $choice in
-        1) do_install ;;
-        2) do_upgrade ;;
-        3) do_uninstall ;;
-        0) exit 0 ;;
-        *) log_error "Invalid option" ;;
-    esac
+    while true; do
+        show_menu
+        
+        read -p "Select option [0-3]: " choice
+        
+        case $choice in
+            1) do_install; break ;;
+            2) do_upgrade; break ;;
+            3) do_uninstall; break ;;
+            0) echo "Bye!"; exit 0 ;;
+            *) log_warn "Invalid option, please try again" ;;
+        esac
+    done
 }
 
 main "$@"
