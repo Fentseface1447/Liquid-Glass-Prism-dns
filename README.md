@@ -1,6 +1,6 @@
 # Liquid Glass Prism Gateway
 
-自托管 DNS 网关，支持智能流媒体解锁和 AI 服务路由。采用 Liquid Glass 风格 UI。
+自托管 DNS 网关，支持智能流媒体解锁和 AI 服务解锁检测。采用 Liquid Glass 风格 UI。
 
 [English](README_EN.md) | 中文
 
@@ -9,22 +9,27 @@
 - **智能 DNS 路由** - 根据域名规则将流量路由到不同 Proxy Agent
 - **外部规则集支持** - 支持导入外部规则集文件，快速配置常用服务
 - **流媒体解锁检测** - 自动检测 Netflix、Disney+、HBO Max 等 20+ 服务的解锁状态
-- **AI 服务支持** - OpenAI、Claude、Gemini、Copilot、Perplexity 路由
+- **AI 服务解锁检测** - 自动检测 OpenAI、Claude、Gemini、Copilot 等 AI 服务的可用状态
 - **双栈 IPv4/IPv6** - 完整支持双协议
 - **智能模式** - 根据解锁状态自动选择代理
 - **实时监控** - 基于 SSE 的节点状态实时更新
 - **现代 UI** - Liquid Glass 设计风格，支持深色模式
 
-## 快速安装
+## 安装
 
 ```bash
 curl -sL https://raw.githubusercontent.com/mslxi/Liquid-Glass-Prism-dns/main/install.sh | sudo bash
 ```
 
+脚本提供以下选项：
+- **1. 安装** - 首次安装，完成后显示登录密码
+- **2. 升级** - 升级到最新版本，保留配置
+- **3. 卸载** - 完全卸载并清理数据
+
 安装完成后：
 - Web 界面：`http://你的IP:8080`
 - 用户名：`admin`
-- 密码：查看日志 `journalctl -u prism-controller | grep password`
+- 密码：安装完成时显示
 
 ## 手动安装
 
@@ -88,20 +93,6 @@ cd /opt/prism && prism-controller --host 0.0.0.0 --port 8080
 |------|------|--------|
 | `--host` | 监听地址 | `0.0.0.0` |
 | `--port` | 监听端口 | `8080` |
-
-## 支持的服务
-
-### AI 服务
-OpenAI, Gemini, Claude, Copilot, Perplexity, Meta AI, Suno
-
-### 视频流媒体
-Netflix, Disney+, YouTube, HBO Max, Prime Video, Hulu, Apple TV+, Paramount+, Peacock, Crunchyroll, DAZN, Bilibili
-
-### 音乐
-Spotify
-
-### 社交
-TikTok
 
 ## Systemd 服务管理
 

@@ -1,6 +1,6 @@
 # Liquid Glass Prism Gateway
 
-A self-hosted DNS gateway with smart streaming unlock and AI services routing. Features a beautiful Liquid Glass-inspired UI.
+A self-hosted DNS gateway with smart streaming unlock and AI services unlock detection. Features a beautiful Liquid Glass-inspired UI.
 
 [中文](README.md) | English
 
@@ -9,22 +9,27 @@ A self-hosted DNS gateway with smart streaming unlock and AI services routing. F
 - **Smart DNS Routing** - Route traffic through different Proxy Agents based on domain rules
 - **External Ruleset Support** - Import external ruleset files for quick configuration of common services
 - **Streaming Unlock Detection** - Auto-detect unlock status for Netflix, Disney+, HBO Max, and 20+ services
-- **AI Services Support** - OpenAI, Claude, Gemini, Copilot, Perplexity routing
+- **AI Services Unlock Detection** - Auto-detect availability of OpenAI, Claude, Gemini, Copilot and other AI services
 - **Dual-Stack IPv4/IPv6** - Full support for both protocols
 - **Smart Mode** - Automatic proxy selection based on unlock status
 - **Real-time Monitoring** - SSE-based live node status updates
 - **Modern UI** - Liquid Glass design with dark mode support
 
-## Quick Install
+## Installation
 
 ```bash
 curl -sL https://raw.githubusercontent.com/mslxi/Liquid-Glass-Prism-dns/main/install.sh | sudo bash
 ```
 
+The script provides the following options:
+- **1. Install** - Fresh installation, displays login password upon completion
+- **2. Upgrade** - Upgrade to latest version, preserves configuration
+- **3. Uninstall** - Complete removal with data cleanup
+
 After installation:
 - Web UI: `http://YOUR_IP:8080`
 - Username: `admin`
-- Password: Check logs with `journalctl -u prism-controller | grep password`
+- Password: Displayed after installation
 
 ## Manual Installation
 
@@ -88,20 +93,6 @@ cd /opt/prism && prism-controller --host 0.0.0.0 --port 8080
 |------|-------------|---------|
 | `--host` | Listen address | `0.0.0.0` |
 | `--port` | Listen port | `8080` |
-
-## Supported Services
-
-### AI Services
-OpenAI, Gemini, Claude, Copilot, Perplexity, Meta AI, Suno
-
-### Video Streaming
-Netflix, Disney+, YouTube, HBO Max, Prime Video, Hulu, Apple TV+, Paramount+, Peacock, Crunchyroll, DAZN, Bilibili
-
-### Music
-Spotify
-
-### Social
-TikTok
 
 ## Systemd Service
 

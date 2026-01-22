@@ -39,10 +39,18 @@ generate_secret() {
     cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1
 }
 
+generate_password() {
+    cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1
+}
+
 check_root() {
     if [ "$EUID" -ne 0 ]; then
         log_error "Please run as root (sudo)"
     fi
+}
+
+get_local_ip() {
+    hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost"
 }
 
 download_binary() {
@@ -72,11 +80,6 @@ download_binary() {
 }
 
 create_env() {
-    if [ -f "${INSTALL_DIR}/.env" ]; then
-        log_warn ".env already exists, skipping"
-        return
-    fi
-    
     local jwt_secret=$(generate_secret)
     
     cat > "${INSTALL_DIR}/.env" << EOF
@@ -90,7 +93,7 @@ EOF
 create_systemd_service() {
     cat > "/etc/systemd/system/${SERVICE_NAME}.service" << EOF
 [Unit]
-Description=Prism DNS Gateway Controller
+Description=Liquid Glass Prism Gateway Controller
 After=network.target
 
 [Service]
@@ -107,13 +110,13 @@ WantedBy=multi-user.target
 EOF
     
     systemctl daemon-reload
-    systemctl enable ${SERVICE_NAME}
+    systemctl enable ${SERVICE_NAME} >/dev/null 2>&1
     log_success "Systemd service created"
 }
 
 start_service() {
     systemctl start ${SERVICE_NAME}
-    sleep 2
+    sleep 3
     if systemctl is-active --quiet ${SERVICE_NAME}; then
         log_success "Service started"
     else
@@ -121,35 +124,51 @@ start_service() {
     fi
 }
 
-get_local_ip() {
-    hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost"
+stop_service() {
+    if systemctl is-active --quiet ${SERVICE_NAME} 2>/dev/null; then
+        systemctl stop ${SERVICE_NAME}
+        log_success "Service stopped"
+    fi
 }
 
-show_login_info() {
+show_install_info() {
     local ip=$(get_local_ip)
+    local password=$1
     echo ""
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}  Prism Gateway Installed Successfully ${NC}"
-    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}  Liquid Glass Prism Gateway Installed!     ${NC}"
+    echo -e "${GREEN}════════════════════════════════════════════${NC}"
     echo ""
     echo -e "  Web UI:    ${BLUE}http://${ip}:8080${NC}"
     echo -e "  Username:  ${YELLOW}admin${NC}"
-    echo -e "  Password:  ${YELLOW}Check startup logs${NC}"
+    echo -e "  Password:  ${YELLOW}${password}${NC}"
     echo ""
-    echo -e "  Get password: ${BLUE}journalctl -u ${SERVICE_NAME} | grep password${NC}"
+    echo -e "  ${RED}Please save your password!${NC}"
     echo ""
-    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}════════════════════════════════════════════${NC}"
 }
 
-main() {
+show_upgrade_info() {
+    local ip=$(get_local_ip)
     echo ""
-    echo -e "${BLUE}╔═══════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║   Prism DNS Gateway Installer         ║${NC}"
-    echo -e "${BLUE}║   github.com/${REPO}  ║${NC}"
-    echo -e "${BLUE}╚═══════════════════════════════════════╝${NC}"
+    echo -e "${GREEN}════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}  Upgrade Completed!                        ${NC}"
+    echo -e "${GREEN}════════════════════════════════════════════${NC}"
     echo ""
+    echo -e "  Web UI:    ${BLUE}http://${ip}:8080${NC}"
+    echo -e "  Config:    Preserved"
+    echo ""
+    echo -e "${GREEN}════════════════════════════════════════════${NC}"
+}
+
+do_install() {
+    log_info "Starting fresh installation..."
     
     check_root
+    
+    if [ -f "${INSTALL_DIR}/${BINARY_NAME}" ]; then
+        log_error "Already installed. Use upgrade or uninstall first."
+    fi
     
     local os=$(detect_os)
     local arch=$(detect_arch)
@@ -162,7 +181,93 @@ main() {
     create_env
     create_systemd_service
     start_service
-    show_login_info
+    
+    sleep 2
+    local password=$(journalctl -u ${SERVICE_NAME} --no-pager 2>/dev/null | grep -oP 'password=\K[a-zA-Z0-9]+' | tail -1)
+    if [ -z "$password" ]; then
+        password="Check: journalctl -u ${SERVICE_NAME} | grep password"
+    fi
+    
+    show_install_info "$password"
+}
+
+do_upgrade() {
+    log_info "Starting upgrade..."
+    
+    check_root
+    
+    if [ ! -f "${INSTALL_DIR}/${BINARY_NAME}" ]; then
+        log_error "Not installed. Use install first."
+    fi
+    
+    local os=$(detect_os)
+    local arch=$(detect_arch)
+    log_info "Detected: ${os}/${arch}"
+    
+    stop_service
+    
+    mv "${INSTALL_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}.bak" 2>/dev/null || true
+    
+    download_binary "$os" "$arch"
+    
+    rm -f "${INSTALL_DIR}/${BINARY_NAME}.bak"
+    
+    start_service
+    show_upgrade_info
+}
+
+do_uninstall() {
+    log_info "Starting uninstallation..."
+    
+    check_root
+    
+    echo ""
+    echo -e "${YELLOW}This will remove all data including database!${NC}"
+    read -p "Are you sure? (y/N): " confirm
+    if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+        log_info "Cancelled"
+        exit 0
+    fi
+    
+    stop_service
+    
+    systemctl disable ${SERVICE_NAME} >/dev/null 2>&1 || true
+    rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
+    systemctl daemon-reload
+    
+    rm -rf ${INSTALL_DIR}
+    
+    echo ""
+    log_success "Uninstallation completed"
+    echo ""
+}
+
+show_menu() {
+    echo ""
+    echo -e "${BLUE}╔═══════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║   Liquid Glass Prism Gateway              ║${NC}"
+    echo -e "${BLUE}║   github.com/${REPO}   ║${NC}"
+    echo -e "${BLUE}╚═══════════════════════════════════════════╝${NC}"
+    echo ""
+    echo "  1) Install    - Fresh installation"
+    echo "  2) Upgrade    - Upgrade to latest version"
+    echo "  3) Uninstall  - Remove completely"
+    echo "  0) Exit"
+    echo ""
+}
+
+main() {
+    show_menu
+    
+    read -p "Select option [0-3]: " choice
+    
+    case $choice in
+        1) do_install ;;
+        2) do_upgrade ;;
+        3) do_uninstall ;;
+        0) exit 0 ;;
+        *) log_error "Invalid option" ;;
+    esac
 }
 
 main "$@"
