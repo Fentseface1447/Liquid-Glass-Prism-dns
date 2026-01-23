@@ -133,38 +133,54 @@ detect_system() {
 download_binary() {
     step "Fetching version info..."
 
+    API_URL="https://api.github.com/repos/$REPO/releases"
+    
     if [ "$BETA_MODE" = true ]; then
-        API_URL="https://api.github.com/repos/$REPO/releases"
         info "Mode: ${YELLOW}Beta Channel (Pre-release)${NC}"
     else
-        API_URL="https://api.github.com/repos/$REPO/releases/latest"
         info "Mode: ${GREEN}Stable Channel (Official)${NC}"
     fi
     
-    RESP=$(curl -s --connect-timeout 5 "$API_URL")
+    RESP=$(curl -s --connect-timeout 10 "$API_URL")
 
+    # Find the first release that contains the agent binary
     if [ "$BETA_MODE" = true ]; then
-        VERSION=$(echo "$RESP" | grep '"tag_name":' | grep -i "beta" | head -n 1 | cut -d '"' -f 4)
-        if [ -z "$VERSION" ]; then
-            warn "No Beta version found, trying latest..."
-            VERSION=$(echo "$RESP" | grep '"tag_name":' | head -n 1 | cut -d '"' -f 4)
-        fi
+        # For beta: find first pre-release with agent asset
+        DOWNLOAD_URL=$(echo "$RESP" | grep -E '"tag_name"|"browser_download_url".*prism-agent' | \
+            awk -v asset="$ASSET_NAME" '
+                /"tag_name":/ { tag=$0; gsub(/.*"tag_name": *"|".*/, "", tag) }
+                /"browser_download_url":/ && index($0, asset) { 
+                    url=$0; gsub(/.*"browser_download_url": *"|".*/, "", url)
+                    if (index(tag, "beta")) { print url; exit }
+                }
+            ')
     else
-        VERSION=$(echo "$RESP" | grep '"tag_name":' | head -n 1 | cut -d '"' -f 4)
+        # For stable: find first non-prerelease with agent asset
+        DOWNLOAD_URL=$(echo "$RESP" | grep -E '"tag_name"|"prerelease"|"browser_download_url".*prism-agent' | \
+            awk -v asset="$ASSET_NAME" '
+                /"tag_name":/ { tag=$0; gsub(/.*"tag_name": *"|".*/, "", tag) }
+                /"prerelease":/ { prerelease=$0; gsub(/.*"prerelease": *|,.*/, "", prerelease) }
+                /"browser_download_url":/ && index($0, asset) { 
+                    url=$0; gsub(/.*"browser_download_url": *"|".*/, "", url)
+                    if (prerelease == "false") { print url; exit }
+                }
+            ')
     fi
 
-    if [ -n "$VERSION" ]; then
-        info "Found version: ${CYAN}${VERSION}${NC}"
-        DOWNLOAD_URL="https://github.com/$REPO/releases/download/$VERSION/$ASSET_NAME"
-    else
-        warn "Cannot get version info via API, using generic link..."
+    if [ -z "$DOWNLOAD_URL" ]; then
+        warn "Smart search failed, trying fallback..."
         DOWNLOAD_URL="https://github.com/$REPO/releases/latest/download/$ASSET_NAME"
+    fi
+
+    VERSION=$(echo "$DOWNLOAD_URL" | grep -oE 'v[0-9]+\.[0-9]+[^/]*' | head -1)
+    if [ -n "$VERSION" ]; then
+        info "Found agent version: ${CYAN}${VERSION}${NC}"
     fi
 
     info "Download URL: $DOWNLOAD_URL"
     curl -L -o "/tmp/$BINARY_NAME" "$DOWNLOAD_URL" --progress-bar
 
-    if [ ! -f "/tmp/$BINARY_NAME" ]; then
+    if [ ! -f "/tmp/$BINARY_NAME" ] || [ ! -s "/tmp/$BINARY_NAME" ]; then
         error "Download failed. Please check network or GitHub access."
     fi
 
