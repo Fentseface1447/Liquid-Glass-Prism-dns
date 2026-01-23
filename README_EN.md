@@ -10,6 +10,10 @@ A self-hosted DNS gateway with smart streaming unlock and AI services unlock det
 
 > No installation required, experience all features instantly
 
+## 💬 Join the Community
+
+**Telegram Group**: [https://t.me/Prism_Gateway](https://t.me/Prism_Gateway)
+
 ## Features
 
 ### Core Features
