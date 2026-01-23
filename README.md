@@ -18,7 +18,7 @@
 ## 安装
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/mslxi/Liquid-Glass-Prism-dns/main/install.sh | sudo bash
+wget -O install.sh https://raw.githubusercontent.com/mslxi/Liquid-Glass-Prism-dns/main/install.sh && sudo bash install.sh
 ```
 
 脚本提供以下选项：
@@ -39,10 +39,10 @@ wget -qO- https://raw.githubusercontent.com/mslxi/Liquid-Glass-Prism-dns/main/in
 # 下载
 wget https://github.com/mslxi/Liquid-Glass-Prism-dns/releases/latest/download/prism-controller-linux-amd64
 chmod +x prism-controller-linux-amd64
+mkdir -p /opt/prism
 mv prism-controller-linux-amd64 /opt/prism/prism-controller
 
 # 创建环境文件
-mkdir -p /opt/prism
 echo "JWT_SECRET=$(openssl rand -hex 16)" > /opt/prism/.env
 
 # 运行

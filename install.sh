@@ -103,28 +103,6 @@ EOF
     log_ok "服务配置完成"
 }
 
-wait_for_password() {
-    local password="" count=0
-    
-    log_info "正在启动服务..."
-    systemctl start ${SERVICE_NAME}
-    
-    while [ $count -lt 30 ]; do
-        if ! systemctl is-active --quiet ${SERVICE_NAME}; then
-            log_error "服务启动失败，请检查: journalctl -u ${SERVICE_NAME}"
-        fi
-        
-        password=$(journalctl -u ${SERVICE_NAME} --no-pager 2>/dev/null | grep -oP 'password=\K[a-zA-Z0-9]+' | tail -1)
-        [ -n "$password" ] && break
-        
-        sleep 1
-        count=$((count + 1))
-    done
-    
-    log_ok "服务已启动"
-    echo "$password"
-}
-
 get_current_port() {
     grep -oP '\-\-port\s+\K[0-9]+' "/etc/systemd/system/${SERVICE_NAME}.service" 2>/dev/null || echo "8080"
 }
@@ -139,36 +117,57 @@ do_install() {
     local arch=$(detect_arch)
     log_info "系统: ${os}/${arch}"
     
-    # 询问端口
     echo ""
     echo -n "请输入端口 [默认 8080]: "
-    read -r input_port 2>/dev/null || input_port=""
+    read -r input_port
     PORT=${input_port:-8080}
     
-    # 验证端口
     if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
         log_warn "端口无效，使用默认 8080"
         PORT=8080
     fi
     
-    # 检查端口占用
     if ! check_port "$PORT"; then
         log_error "端口 ${PORT} 已被占用，请选择其他端口"
     fi
     
     log_info "使用端口: ${PORT}"
     
+    # 清理旧日志，确保获取新密码
+    journalctl --rotate >/dev/null 2>&1 || true
+    journalctl --vacuum-time=1s >/dev/null 2>&1 || true
+    
     download_binary "$os" "$arch"
     create_service "$PORT"
     
-    local password=$(wait_for_password)
+    log_info "正在启动服务..."
+    systemctl start ${SERVICE_NAME}
+    
+    local password=""
+    local count=0
+    
+    while [ $count -lt 30 ]; do
+        sleep 1
+        
+        if ! systemctl is-active --quiet ${SERVICE_NAME}; then
+            log_error "服务启动失败，请检查: journalctl -u ${SERVICE_NAME}"
+        fi
+        
+        password=$(journalctl -u ${SERVICE_NAME} --since "1 minute ago" --no-pager 2>/dev/null | grep -oP 'password=\K[a-zA-Z0-9]+' | tail -1)
+        [ -n "$password" ] && break
+        
+        count=$((count + 1))
+    done
+    
+    log_ok "服务已启动"
+    
     [ -z "$password" ] && password="请查看: journalctl -u ${SERVICE_NAME} | grep password"
     
     local ip=$(get_local_ip)
     echo ""
-    echo -e "${GREEN}══════════════════════════════════════════${NC}"
-    echo -e "${GREEN}        安装成功!                         ${NC}"
-    echo -e "${GREEN}══════════════════════════════════════════${NC}"
+    log_info "══════════════════════════════════════════"
+    log_info "        安装成功!"
+    log_info "══════════════════════════════════════════"
     echo ""
     echo -e "  地址:   ${BLUE}http://${ip}:${PORT}${NC}"
     echo -e "  用户名: ${YELLOW}admin${NC}"
@@ -176,7 +175,7 @@ do_install() {
     echo ""
     echo -e "  ${RED}请保存您的密码!${NC}"
     echo ""
-    echo -e "${GREEN}══════════════════════════════════════════${NC}"
+    log_info "══════════════════════════════════════════"
 }
 
 do_upgrade() {
@@ -214,7 +213,7 @@ do_uninstall() {
     
     echo ""
     echo -e "${YELLOW}将删除所有数据！确定吗? (y/N): ${NC}\c"
-    read -r confirm 2>/dev/null || confirm=""
+    read -r confirm
     
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && { log_info "已取消"; return; }
     
@@ -243,7 +242,7 @@ show_menu() {
 main() {
     show_menu
     echo -n "请选择 [0-3]: "
-    read -r choice 2>/dev/null || choice=""
+    read -r choice
     
     case $choice in
         1) do_install ;;
