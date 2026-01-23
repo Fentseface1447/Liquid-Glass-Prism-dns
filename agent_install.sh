@@ -143,19 +143,32 @@ download_binary() {
     
     RESP=$(curl -s --connect-timeout 10 "$API_URL")
 
-    # Find the first release that contains the agent binary
     if [ "$BETA_MODE" = true ]; then
-        # For beta: find first pre-release with agent asset
-        DOWNLOAD_URL=$(echo "$RESP" | grep -E '"tag_name"|"browser_download_url".*prism-agent' | \
-            awk -v asset="$ASSET_NAME" '
-                /"tag_name":/ { tag=$0; gsub(/.*"tag_name": *"|".*/, "", tag) }
-                /"browser_download_url":/ && index($0, asset) { 
-                    url=$0; gsub(/.*"browser_download_url": *"|".*/, "", url)
-                    if (index(tag, "beta")) { print url; exit }
+        # Beta: find the beta release with largest timestamp (format: beta-YYYYMMDDHHMMSS)
+        DOWNLOAD_URL=$(echo "$RESP" | awk -v asset="$ASSET_NAME" '
+            BEGIN { latest_ts = ""; latest_url = "" }
+            /"tag_name":/ { 
+                tag = $0
+                gsub(/.*"tag_name": *"|".*/, "", tag)
+                current_tag = tag
+            }
+            /"browser_download_url":/ && index($0, asset) {
+                url = $0
+                gsub(/.*"browser_download_url": *"|".*/, "", url)
+                if (index(current_tag, "beta-") == 1) {
+                    ts = current_tag
+                    gsub(/^beta-/, "", ts)
+                    if (ts > latest_ts) {
+                        latest_ts = ts
+                        latest_url = url
+                    }
                 }
-            ')
+            }
+            END { print latest_url }
+        ')
+        VERSION=$(echo "$DOWNLOAD_URL" | grep -oE 'beta-[0-9]+' | head -1)
     else
-        # For stable: find first non-prerelease with agent asset
+        # Stable: find first non-prerelease with agent asset
         DOWNLOAD_URL=$(echo "$RESP" | grep -E '"tag_name"|"prerelease"|"browser_download_url".*prism-agent' | \
             awk -v asset="$ASSET_NAME" '
                 /"tag_name":/ { tag=$0; gsub(/.*"tag_name": *"|".*/, "", tag) }
@@ -165,6 +178,7 @@ download_binary() {
                     if (prerelease == "false") { print url; exit }
                 }
             ')
+        VERSION=$(echo "$DOWNLOAD_URL" | grep -oE 'v[0-9]+\.[0-9]+[^/]*' | head -1)
     fi
 
     if [ -z "$DOWNLOAD_URL" ]; then
@@ -172,7 +186,6 @@ download_binary() {
         DOWNLOAD_URL="https://github.com/$REPO/releases/latest/download/$ASSET_NAME"
     fi
 
-    VERSION=$(echo "$DOWNLOAD_URL" | grep -oE 'v[0-9]+\.[0-9]+[^/]*' | head -1)
     if [ -n "$VERSION" ]; then
         info "Found agent version: ${CYAN}${VERSION}${NC}"
     fi
