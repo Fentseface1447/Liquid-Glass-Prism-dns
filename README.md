@@ -1,6 +1,6 @@
 # Liquid Glass Prism Gateway
 
-Prism-Gateway 是一个基于 DNS 的分流规则管理面板。轻量，非侵入式部署，支持智能流媒体解锁和 AI 服务解锁检测。采用 Liquid Glass 风格 UI。
+Prism-Gateway 是一个基于 DNS 的分流规则管理面板。轻量，非侵入式部署，支持流媒体解锁和 AI 服务智能解锁检测。采用 Liquid Glass 风格 UI。
 
 [English](README_EN.md) | 中文
 

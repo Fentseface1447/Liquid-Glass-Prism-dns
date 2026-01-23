@@ -1,6 +1,6 @@
 # Liquid Glass Prism Gateway
 
-Prism-Gateway is a lightweight, non-intrusive DNS-based traffic routing management panel. It supports smart streaming unlock and AI services unlock detection. Features a beautiful Liquid Glass-inspired UI.
+Prism-Gateway is a lightweight, non-intrusive DNS-based traffic routing management panel. It supports streaming unlock and smart AI services unlock detection. Features a beautiful Liquid Glass-inspired UI.
 
 [中文](README.md) | English
 
