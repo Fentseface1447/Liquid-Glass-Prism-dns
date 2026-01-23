@@ -45,20 +45,24 @@ Priority 100 (Highest) → Priority 50 → Priority 10 → Priority 1 (Lowest)
 
 #### How It Works
 
+**Fallback Mode**: Try nodes from highest to lowest priority
+
+```mermaid
+flowchart LR
+    A[Node A<br/>Priority 100] -->|A fails| B[Node B<br/>Priority 50]
+    B -->|B fails| C[Node C<br/>Priority 10]
 ```
-┌───────────────────────────────────────────────────────┐
-│                      Group                             │
-├───────────────────────────────────────────────────────┤
-│  Node A (Priority 100) ←──┐                            │
-│  Node B (Priority 50)  ←──┼── Fallback: high to low    │
-│  Node C (Priority 10)  ←──┘                            │
-│                                                       │
-│  OR                                                   │
-│                                                       │
-│  Node A (Unlocked ✓)  ←──┐                            │
-│  Node B (Locked ✗)    ←──┼── Smart: best unlock status │
-│  Node C (Unlocked ✓)  ←──┘                            │
-└───────────────────────────────────────────────────────┘
+
+**Smart Mode**: Automatically select the node with best unlock status
+
+```mermaid
+flowchart LR
+    subgraph Group[Node Group]
+        A[Node A<br/>Unlocked ✓]
+        B[Node B<br/>Locked ✗]
+        C[Node C<br/>Unlocked ✓]
+    end
+    Group -->|Smart Select| D[Choose unlocked node]
 ```
 
 **Example Scenarios**:
@@ -138,22 +142,12 @@ curl -sL https://raw.githubusercontent.com/mslxi/Liquid-Glass-Prism-dns/main/age
 
 ## Architecture
 
-```
-┌───────────────────────────────────────────────────────────────┐
-│                         Controller                             │
-│            (Web UI + API + Rule Engine + Unlock Detection)     │
-└───────────────────────────────┬───────────────────────────────┘
-                                │
-                                │ Push Rules / Status Report
-                                │
-          ┌─────────────────────┼─────────────────────┐
-          │                     │                     │
-          ▼                     ▼                     ▼
-┌───────────────┐     ┌───────────────┐     ┌───────────────┐
-│  DNS Client   │     │  Proxy Agent  │     │  Proxy Agent  │
-│  (Edge Node)  │     │   (US Node)   │     │   (JP Node)   │
-│  Receive DNS  │     │Unlock Netflix │     │  Unlock DMM   │
-└───────────────┘     └───────────────┘     └───────────────┘
+```mermaid
+flowchart TB
+    Controller[Controller<br/>Web UI + API + Rule Engine + Unlock Detection]
+    Controller -->|Push Rules / Status Report| DNS[DNS Client<br/>Edge Node<br/>Receive DNS]
+    Controller -->|Push Rules / Status Report| Proxy1[Proxy Agent<br/>US Node<br/>Unlock Netflix]
+    Controller -->|Push Rules / Status Report| Proxy2[Proxy Agent<br/>JP Node<br/>Unlock DMM]
 ```
 
 | Component | Description |
