@@ -28,33 +28,41 @@ This project supports flexible node grouping and routing strategies:
 
 #### Group (Node Grouping)
 
-Combine multiple Proxy Agents into a group, each node can have a priority. Two selection strategies are supported within a group:
+Combine multiple Proxy Agents into a group, each node can have a priority (higher value = higher priority). Two selection strategies are supported within a group:
 
 | Strategy | Description |
 |----------|-------------|
 | **Smart** | Intelligent Selection - Automatically choose the node with best unlock status within the group |
-| **Fallback** | Failover - Try nodes in priority order within the group, switch to next when current fails |
+| **Fallback** | Failover - Try nodes from highest to lowest priority, switch to next when current fails |
+
+#### Priority Rules
+
+Priority is sorted by value from high to low:
+
+```
+Priority 100 (Highest) → Priority 50 → Priority 10 → Priority 1 (Lowest)
+```
 
 #### How It Works
 
 ```
-┌─────────────────────────────────────────────────┐
-│                   Group                          │
-├─────────────────────────────────────────────────┤
-│  Node A (Priority 1)  ←─┐                        │
-│  Node B (Priority 2)  ←─┼── Fallback: by priority│
-│  Node C (Priority 3)  ←─┘                        │
-│                                                 │
-│  OR                                             │
-│                                                 │
-│  Node A (Unlocked ✓)  ←─┐                        │
-│  Node B (Locked ✗)    ←─┼── Smart: best unlock   │
-│  Node C (Unlocked ✓)  ←─┘                        │
-└─────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                      Group                             │
+├───────────────────────────────────────────────────────┤
+│  Node A (Priority 100) ←──┐                            │
+│  Node B (Priority 50)  ←──┼── Fallback: high to low    │
+│  Node C (Priority 10)  ←──┘                            │
+│                                                       │
+│  OR                                                   │
+│                                                       │
+│  Node A (Unlocked ✓)  ←──┐                            │
+│  Node B (Locked ✗)    ←──┼── Smart: best unlock status │
+│  Node C (Unlocked ✓)  ←──┘                            │
+└───────────────────────────────────────────────────────┘
 ```
 
 **Example Scenarios**:
-- **Fallback Mode**: Node A > Node B > Node C, prefer A, use B if A fails, use C if B fails
+- **Fallback Mode**: Priority 100 > 50 > 10, prefer highest priority node, degrade sequentially on failure
 - **Smart Mode**: Auto-detect unlock status of all nodes in group, select the one that is unlocked
 
 ### Unlock Detection
@@ -113,33 +121,39 @@ cd /opt/prism && ./prism-controller --host 0.0.0.0 --port 8080
 
 ## Agent Installation
 
-Install Agent on Proxy nodes:
+Install Agent on node servers:
 
 ```bash
 curl -sL https://raw.githubusercontent.com/mslxi/Liquid-Glass-Prism-dns/main/agent_install.sh | bash -s -- --master <Controller_URL> --secret <Node_Secret>
 ```
 
 **Parameters**:
-- `--master`: Controller URL, e.g., `http://192.168.1.1:8080`
-- `--secret`: Node secret generated when creating node in Controller
-- `--smart`: Enable smart mode (optional)
-- `--beta`: Use beta version (optional)
+
+| Parameter | Description | Applicable Nodes |
+|-----------|-------------|------------------|
+| `--master` | Controller URL, e.g., `http://192.168.1.1:8080` | All nodes |
+| `--secret` | Node secret generated when creating node in Controller | All nodes |
+| `--smart` | Enable smart unlock detection mode | DNS Client only |
+| `--beta` | Use beta version | All nodes |
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        Controller                            │
-│           (Web UI + API + Rule Engine + Unlock Detection)    │
-└─────────────────────────┬───────────────────────────────────┘
-                          │ Push Rules / Status Report
-          ┌───────────────┼───────────────┐
-          ▼               ▼               ▼
-┌─────────────┐   ┌─────────────┐   ┌─────────────┐
-│ DNS Client  │   │ Proxy Agent │   │ Proxy Agent │
-│ (Edge Node) │   │  (US Node)  │   │  (JP Node)  │
-│ Receive DNS │   │Unlock Netflix│   │ Unlock DMM  │
-└─────────────┘   └─────────────┘   └─────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│                         Controller                             │
+│            (Web UI + API + Rule Engine + Unlock Detection)     │
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+                                │ Push Rules / Status Report
+                                │
+          ┌─────────────────────┼─────────────────────┐
+          │                     │                     │
+          ▼                     ▼                     ▼
+┌───────────────┐     ┌───────────────┐     ┌───────────────┐
+│  DNS Client   │     │  Proxy Agent  │     │  Proxy Agent  │
+│  (Edge Node)  │     │   (US Node)   │     │   (JP Node)   │
+│  Receive DNS  │     │Unlock Netflix │     │  Unlock DMM   │
+└───────────────┘     └───────────────┘     └───────────────┘
 ```
 
 | Component | Description |
