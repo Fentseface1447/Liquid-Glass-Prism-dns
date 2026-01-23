@@ -4,18 +4,67 @@
 
 [English](README_EN.md) | 中文
 
+## 🌐 快速体验
+
+**在线演示**: [https://prism.ciii.club](https://prism.ciii.club)
+
+> 无需安装，直接体验完整功能
+
 ## 功能特性
+
+### 核心功能
 
 - **智能 DNS 路由** - 根据域名规则将流量路由到不同 Proxy Agent
 - **外部规则集支持** - 支持导入外部规则集文件，快速配置常用服务
 - **流媒体解锁检测** - 自动检测 Netflix、Disney+、HBO Max 等 20+ 服务的解锁状态
 - **AI 服务解锁检测** - 自动检测 OpenAI、Claude、Gemini、Copilot 等 AI 服务的可用状态
 - **双栈 IPv4/IPv6** - 完整支持双协议
-- **智能模式** - 根据解锁状态自动选择代理
 - **实时监控** - 基于 SSE 的节点状态实时更新
 - **现代 UI** - Liquid Glass 设计风格，支持深色模式
 
+### 智能模式 (Smart Mode)
+
+智能模式是本项目的核心特性，可根据节点的解锁状态自动选择最佳代理：
+
+| 模式 | 说明 |
+|------|------|
+| **Smart** | 智能选择 - 自动选择解锁状态最佳的节点 |
+| **Fallback** | 故障转移 - 按优先级顺序尝试，当前节点失败时自动切换到下一个 |
+| **Group** | 负载均衡 - 在一组节点中随机选择 |
+
+### 优先级机制
+
+每个规则可以配置多个 Proxy Agent，按优先级排序：
+
+```
+优先级 1 (最高) → 优先级 2 → 优先级 3 → ... → 优先级 N (最低)
+```
+
+- **Smart 模式**: 在所有节点中选择解锁状态最佳的
+- **Fallback 模式**: 优先使用高优先级节点，失败时降级
+- **Group 模式**: 在同优先级节点中负载均衡
+
+### 解锁检测
+
+自动检测以下服务的解锁状态：
+
+**流媒体服务**
+- Netflix, Disney+, HBO Max, Amazon Prime Video
+- Hulu, Paramount+, Peacock, Discovery+
+- YouTube Premium, Spotify, Apple TV+
+- BBC iPlayer, ITV, Channel 4, Channel 5
+- 以及更多...
+
+**AI 服务**
+- OpenAI (ChatGPT)
+- Anthropic (Claude)
+- Google (Gemini)
+- GitHub Copilot
+- 以及更多...
+
 ## 安装
+
+### 一键安装 (推荐)
 
 ```bash
 wget -O install.sh https://raw.githubusercontent.com/mslxi/Liquid-Glass-Prism-dns/main/install.sh && sudo bash install.sh
@@ -31,7 +80,7 @@ wget -O install.sh https://raw.githubusercontent.com/mslxi/Liquid-Glass-Prism-dn
 - 用户名：`admin`
 - 密码：安装完成时显示
 
-## 手动安装
+### 手动安装
 
 从 [Releases](https://github.com/mslxi/Liquid-Glass-Prism-dns/releases) 下载对应平台的二进制文件。
 
@@ -49,26 +98,50 @@ echo "JWT_SECRET=$(openssl rand -hex 16)" > /opt/prism/.env
 cd /opt/prism && ./prism-controller --host 0.0.0.0 --port 8080
 ```
 
+## Agent 安装
+
+在 Proxy 节点上安装 Agent：
+
+```bash
+curl -sL https://raw.githubusercontent.com/mslxi/Liquid-Glass-Prism-dns/main/agent_install.sh | bash -s -- --master <Controller地址> --secret <节点密钥>
+```
+
+**参数说明**:
+- `--master`: Controller 的地址，例如 `http://192.168.1.1:8080`
+- `--secret`: 在 Controller 中创建节点时生成的密钥
+- `--smart`: 启用智能模式（可选）
+- `--beta`: 使用 Beta 版本（可选）
+
 ## 架构
 
 ```
-┌─────────────────┐
-│   Controller    │  中央控制器 (Web UI + API + 规则引擎)
-│                 │
-└────────┬────────┘
-         │ 下发规则
-         ▼
-┌─────────────────┐     ┌─────────────────┐
-│   DNS Client    │────▶│   Proxy Agent   │
-│   (边缘节点)    │     │   (出口节点)    │
-└─────────────────┘     └─────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                        Controller                            │
+│         (Web UI + API + 规则引擎 + 解锁检测)                  │
+└─────────────────────────┬───────────────────────────────────┘
+                          │ 下发规则 / 状态上报
+          ┌───────────────┼───────────────┐
+          ▼               ▼               ▼
+┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+│ DNS Client  │   │ Proxy Agent │   │ Proxy Agent │
+│  (边缘节点)  │   │  (美国节点)  │   │  (日本节点)  │
+│  接收DNS查询 │   │  解锁Netflix │   │  解锁DMM    │
+└─────────────┘   └─────────────┘   └─────────────┘
 ```
 
 | 组件 | 描述 |
 |------|------|
-| **Controller** | 中央控制器，提供 Web UI、API 和规则引擎 |
-| **DNS Client** | 边缘节点，接收 DNS 查询，转发到 Proxy Agent |
-| **Proxy Agent** | 出口节点，转发流量到目标服务器 |
+| **Controller** | 中央控制器，提供 Web UI、API、规则引擎和解锁检测 |
+| **DNS Client** | 边缘节点，接收 DNS 查询，根据规则转发到对应 Proxy Agent |
+| **Proxy Agent** | 出口节点，转发流量到目标服务器，上报解锁状态 |
+
+## 使用流程
+
+1. **安装 Controller** - 在中央服务器上安装
+2. **创建节点** - 在 Web UI 中创建 DNS Client 和 Proxy Agent 节点
+3. **安装 Agent** - 在各节点服务器上安装 Agent
+4. **配置规则** - 创建 DNS 规则，选择路由模式和目标节点
+5. **开始使用** - 将客户端 DNS 指向 DNS Client 节点
 
 ## 服务管理
 
