@@ -22,27 +22,40 @@ A self-hosted DNS gateway with smart streaming unlock and AI services unlock det
 - **Real-time Monitoring** - SSE-based live node status updates
 - **Modern UI** - Liquid Glass design with dark mode support
 
-### Smart Mode
+### Routing Modes
 
-Smart Mode is the core feature of this project, automatically selecting the best proxy based on node unlock status:
+This project supports flexible node grouping and routing strategies:
 
-| Mode | Description |
-|------|-------------|
-| **Smart** | Intelligent Selection - Automatically choose the node with the best unlock status |
-| **Fallback** | Failover - Try nodes in priority order, automatically switch to next when current fails |
-| **Group** | Load Balancing - Randomly select among a group of nodes |
+#### Group (Node Grouping)
 
-### Priority Mechanism
+Combine multiple Proxy Agents into a group, each node can have a priority. Two selection strategies are supported within a group:
 
-Each rule can configure multiple Proxy Agents, sorted by priority:
+| Strategy | Description |
+|----------|-------------|
+| **Smart** | Intelligent Selection - Automatically choose the node with best unlock status within the group |
+| **Fallback** | Failover - Try nodes in priority order within the group, switch to next when current fails |
+
+#### How It Works
 
 ```
-Priority 1 (Highest) → Priority 2 → Priority 3 → ... → Priority N (Lowest)
+┌─────────────────────────────────────────────────┐
+│                   Group                          │
+├─────────────────────────────────────────────────┤
+│  Node A (Priority 1)  ←─┐                        │
+│  Node B (Priority 2)  ←─┼── Fallback: by priority│
+│  Node C (Priority 3)  ←─┘                        │
+│                                                 │
+│  OR                                             │
+│                                                 │
+│  Node A (Unlocked ✓)  ←─┐                        │
+│  Node B (Locked ✗)    ←─┼── Smart: best unlock   │
+│  Node C (Unlocked ✓)  ←─┘                        │
+└─────────────────────────────────────────────────┘
 ```
 
-- **Smart Mode**: Select the node with best unlock status among all nodes
-- **Fallback Mode**: Prefer high-priority nodes, degrade when failed
-- **Group Mode**: Load balance among nodes with same priority
+**Example Scenarios**:
+- **Fallback Mode**: Node A > Node B > Node C, prefer A, use B if A fails, use C if B fails
+- **Smart Mode**: Auto-detect unlock status of all nodes in group, select the one that is unlocked
 
 ### Unlock Detection
 
