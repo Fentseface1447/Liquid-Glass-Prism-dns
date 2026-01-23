@@ -63,25 +63,21 @@ check_port() {
 }
 
 ask_port() {
-    local port=""
-    echo ""
-    echo -e "请输入监听端口 / Enter listen port [${YELLOW}${DEFAULT_PORT}${NC}]: \c"
+    local port=$DEFAULT_PORT
     
     if [ -t 0 ]; then
+        echo "" >&2
+        echo -e "请输入监听端口 / Enter listen port [${YELLOW}${DEFAULT_PORT}${NC}]: \c" >&2
         read port || port=""
-    else
-        read port < /dev/tty 2>/dev/null || port=""
+        port=${port:-$DEFAULT_PORT}
     fi
     
-    port=${port:-$DEFAULT_PORT}
-    
     if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
-        log_warn "无效端口，使用默认 / Invalid port, using default: ${DEFAULT_PORT}"
         port=$DEFAULT_PORT
     fi
     
     if ! check_port "$port"; then
-        log_error "端口 ${port} 已被占用 / Port ${port} is already in use. 请手动指定其他端口后重试。"
+        log_error "端口 ${port} 已被占用 / Port ${port} is already in use."
     fi
     
     echo "$port"
