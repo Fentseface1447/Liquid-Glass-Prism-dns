@@ -180,7 +180,3 @@ sudo systemctl restart prism-controller
 # 查看日志
 journalctl -u prism-controller -f
 ```
-
-## 许可证
-
-MIT

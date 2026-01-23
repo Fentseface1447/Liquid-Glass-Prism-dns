@@ -180,7 +180,3 @@ sudo systemctl restart prism-controller
 # View logs
 journalctl -u prism-controller -f
 ```
-
-## License
-
-MIT
