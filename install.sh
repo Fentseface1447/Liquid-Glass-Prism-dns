@@ -13,10 +13,10 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-log_info() { echo -e "${BLUE}[信息]${NC} $1"; }
-log_ok() { echo -e "${GREEN}[完成]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[警告]${NC} $1"; }
-log_error() { echo -e "${RED}[错误]${NC} $1"; exit 1; }
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_ok() { echo -e "${GREEN}[OK]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
 check_root() {
     [ "$EUID" -eq 0 ] || log_error "请使用 root 权限运行 (sudo)"
@@ -72,6 +72,13 @@ download_binary() {
     log_ok "下载完成"
 }
 
+create_env() {
+    cat > "${INSTALL_DIR}/.env" << EOF
+JWT_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+EOF
+    chmod 600 "${INSTALL_DIR}/.env"
+}
+
 create_service() {
     local port=$1
     
@@ -93,14 +100,24 @@ Environment=GIN_MODE=release
 WantedBy=multi-user.target
 EOF
     
-    cat > "${INSTALL_DIR}/.env" << EOF
-JWT_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-EOF
-    chmod 600 "${INSTALL_DIR}/.env"
-    
     systemctl daemon-reload
     systemctl enable ${SERVICE_NAME} >/dev/null 2>&1
     log_ok "服务配置完成"
+}
+
+init_and_get_password() {
+    log_info "初始化数据库并获取密码..."
+    
+    cd ${INSTALL_DIR}
+    
+    local output=$(timeout 5 ./${BINARY_NAME} --host 127.0.0.1 --port 0 2>&1 || true)
+    local password=$(echo "$output" | grep -oP 'password=\K[a-zA-Z0-9]+' | head -1)
+    
+    if [ -z "$password" ]; then
+        password="初始化失败，请查看: journalctl -u ${SERVICE_NAME}"
+    fi
+    
+    echo "$password"
 }
 
 get_current_port() {
@@ -133,41 +150,28 @@ do_install() {
     
     log_info "使用端口: ${PORT}"
     
-    # 清理旧日志，确保获取新密码
-    journalctl --rotate >/dev/null 2>&1 || true
-    journalctl --vacuum-time=1s >/dev/null 2>&1 || true
-    
     download_binary "$os" "$arch"
+    create_env
+    
+    local password=$(init_and_get_password)
+    
     create_service "$PORT"
     
     log_info "正在启动服务..."
     systemctl start ${SERVICE_NAME}
+    sleep 2
     
-    local password=""
-    local count=0
-    
-    while [ $count -lt 30 ]; do
-        sleep 1
-        
-        if ! systemctl is-active --quiet ${SERVICE_NAME}; then
-            log_error "服务启动失败，请检查: journalctl -u ${SERVICE_NAME}"
-        fi
-        
-        password=$(journalctl -u ${SERVICE_NAME} --since "1 minute ago" --no-pager 2>/dev/null | grep -oP 'password=\K[a-zA-Z0-9]+' | tail -1)
-        [ -n "$password" ] && break
-        
-        count=$((count + 1))
-    done
+    if ! systemctl is-active --quiet ${SERVICE_NAME}; then
+        log_error "服务启动失败，请检查: journalctl -u ${SERVICE_NAME}"
+    fi
     
     log_ok "服务已启动"
     
-    [ -z "$password" ] && password="请查看: journalctl -u ${SERVICE_NAME} | grep password"
-    
     local ip=$(get_local_ip)
     echo ""
-    log_info "══════════════════════════════════════════"
-    log_info "        安装成功!"
-    log_info "══════════════════════════════════════════"
+    echo -e "${BLUE}[INFO]${NC} ══════════════════════════════════════════"
+    echo -e "${BLUE}[INFO]${NC}     Liquid Glass Prism Gateway"
+    echo -e "${BLUE}[INFO]${NC} ══════════════════════════════════════════"
     echo ""
     echo -e "  地址:   ${BLUE}http://${ip}:${PORT}${NC}"
     echo -e "  用户名: ${YELLOW}admin${NC}"
@@ -175,7 +179,7 @@ do_install() {
     echo ""
     echo -e "  ${RED}请保存您的密码!${NC}"
     echo ""
-    log_info "══════════════════════════════════════════"
+    echo -e "${BLUE}[INFO]${NC} ══════════════════════════════════════════"
 }
 
 do_upgrade() {
