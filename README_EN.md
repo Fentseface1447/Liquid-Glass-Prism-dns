@@ -1,6 +1,6 @@
 # Liquid Glass Prism Gateway
 
-A self-hosted DNS gateway with smart streaming unlock and AI services unlock detection. Features a beautiful Liquid Glass-inspired UI.
+Prism-Gateway is a lightweight, non-intrusive DNS-based traffic routing management panel. It supports smart streaming unlock and AI services unlock detection. Features a beautiful Liquid Glass-inspired UI.
 
 [中文](README.md) | English
 
@@ -158,7 +158,7 @@ flowchart TB
 |-----------|-------------|
 | **Controller** | Central controller with Web UI, API, rule engine and unlock detection |
 | **DNS Client** | Edge node that receives DNS queries, forwards to corresponding Proxy Agent based on rules |
-| **Proxy Agent** | Exit node that forwards traffic to target servers, reports unlock status |
+| **Proxy Agent** | Exit node that forwards traffic to target servers, reports unlock status. Supports nested unlocking: if a VPS provider offers DNS unlock service, that VPS can serve as a Proxy Agent to provide proxy for other DNS Clients |
 
 ## Workflow
 

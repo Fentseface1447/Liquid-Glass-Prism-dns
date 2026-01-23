@@ -1,6 +1,6 @@
 # Liquid Glass Prism Gateway
 
-自托管 DNS 网关，支持智能流媒体解锁和 AI 服务解锁检测。采用 Liquid Glass 风格 UI。
+Prism-Gateway 是一个基于 DNS 的分流规则管理面板。轻量，非侵入式部署，支持智能流媒体解锁和 AI 服务解锁检测。采用 Liquid Glass 风格 UI。
 
 [English](README_EN.md) | 中文
 
@@ -158,7 +158,7 @@ flowchart TB
 |------|------|
 | **Controller** | 中央控制器，提供 Web UI、API、规则引擎和解锁检测 |
 | **DNS Client** | 边缘节点，接收 DNS 查询，根据规则转发到对应 Proxy Agent |
-| **Proxy Agent** | 出口节点，转发流量到目标服务器，上报解锁状态 |
+| **Proxy Agent** | 出口节点，转发流量到目标服务器，上报解锁状态。支持嵌套解锁：若 VPS 商家提供 DNS 解锁服务，该 VPS 可作为 Proxy Agent 为其他 DNS Client 提供代理 |
 
 ## 使用流程
 
