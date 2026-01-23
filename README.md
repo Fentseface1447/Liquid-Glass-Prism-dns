@@ -18,7 +18,7 @@
 ## 安装
 
 ```bash
-curl -sL https://raw.githubusercontent.com/mslxi/Liquid-Glass-Prism-dns/main/install.sh | sudo bash
+wget -qO- https://raw.githubusercontent.com/mslxi/Liquid-Glass-Prism-dns/main/install.sh | sudo bash
 ```
 
 脚本提供以下选项：
@@ -27,28 +27,26 @@ curl -sL https://raw.githubusercontent.com/mslxi/Liquid-Glass-Prism-dns/main/ins
 - **3. 卸载** - 完全卸载并清理数据
 
 安装完成后：
-- Web 界面：`http://你的IP:8080`
+- Web 界面：`http://你的IP:端口`
 - 用户名：`admin`
 - 密码：安装完成时显示
 
 ## 手动安装
 
-### 下载二进制
-
 从 [Releases](https://github.com/mslxi/Liquid-Glass-Prism-dns/releases) 下载对应平台的二进制文件。
 
 ```bash
-# Linux amd64
+# 下载
 wget https://github.com/mslxi/Liquid-Glass-Prism-dns/releases/latest/download/prism-controller-linux-amd64
 chmod +x prism-controller-linux-amd64
-mv prism-controller-linux-amd64 /usr/local/bin/prism-controller
+mv prism-controller-linux-amd64 /opt/prism/prism-controller
 
 # 创建环境文件
 mkdir -p /opt/prism
 echo "JWT_SECRET=$(openssl rand -hex 16)" > /opt/prism/.env
 
 # 运行
-cd /opt/prism && prism-controller --host 0.0.0.0 --port 8080
+cd /opt/prism && ./prism-controller --host 0.0.0.0 --port 8080
 ```
 
 ## 架构
@@ -63,38 +61,16 @@ cd /opt/prism && prism-controller --host 0.0.0.0 --port 8080
 ┌─────────────────┐     ┌─────────────────┐
 │   DNS Client    │────▶│   Proxy Agent   │
 │   (边缘节点)    │     │   (出口节点)    │
-│  接收DNS查询    │     │   转发流量      │
 └─────────────────┘     └─────────────────┘
 ```
 
-### 组件说明
-
 | 组件 | 描述 |
 |------|------|
-| **Controller** | 中央控制器，提供 Web UI、API 和规则引擎，向 DNS Client 下发规则 |
-| **DNS Client** | 边缘节点，接收 DNS 查询，根据规则将流量转发到对应 Proxy Agent |
-| **Proxy Agent** | 出口节点，接收来自 DNS Client 的流量并转发到目标服务器 |
+| **Controller** | 中央控制器，提供 Web UI、API 和规则引擎 |
+| **DNS Client** | 边缘节点，接收 DNS 查询，转发到 Proxy Agent |
+| **Proxy Agent** | 出口节点，转发流量到目标服务器 |
 
-## 配置
-
-### 环境变量
-
-| 变量 | 描述 | 默认值 |
-|------|------|--------|
-| `JWT_SECRET` | JWT 令牌密钥 | 必填 |
-
-### 命令行参数
-
-```bash
-./prism-controller --host 0.0.0.0 --port 8080
-```
-
-| 参数 | 描述 | 默认值 |
-|------|------|--------|
-| `--host` | 监听地址 | `0.0.0.0` |
-| `--port` | 监听端口 | `8080` |
-
-## Systemd 服务管理
+## 服务管理
 
 ```bash
 # 查看状态
