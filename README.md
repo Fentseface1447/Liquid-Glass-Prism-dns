@@ -180,3 +180,10 @@ sudo systemctl restart prism-controller
 # 查看日志
 journalctl -u prism-controller -f
 ```
+
+## 📸 截图预览
+
+![Dashboard](screenshots/1-dashboard.webp)
+![Nodes](screenshots/2-nodes.webp)
+![Rules](screenshots/3-rules.webp)
+![Unlock](screenshots/4-unlock.webp)
