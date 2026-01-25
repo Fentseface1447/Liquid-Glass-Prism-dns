@@ -5,7 +5,7 @@ REPO="mslxi/Liquid-Glass-Prism-dns"
 INSTALL_DIR="/opt/prism"
 SERVICE_NAME="prism-controller"
 BINARY_NAME="prism-controller"
-PORT=8080
+# PORT=8080 # 移除这里的硬编码，通过下面逻辑处理
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -52,25 +52,49 @@ get_local_ip() {
     hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost"
 }
 
+# --- 修改核心开始：智能获取下载地址 ---
 download_binary() {
     local os=$1 arch=$2
-    local url="https://github.com/${REPO}/releases/latest/download/${BINARY_NAME}-${os}-${arch}"
+    local asset_name="${BINARY_NAME}-${os}-${arch}"
+    local api_url="https://api.github.com/repos/${REPO}/releases"
+    local download_url=""
+
+    log_info "正在查询包含 ${asset_name} 的最新可用版本..."
     
-    log_info "正在下载 ${os}/${arch} 版本..."
-    
-    mkdir -p ${INSTALL_DIR}
-    
+    # 获取 API 响应内容 (兼容 curl 和 wget)
+    local response=""
     if command -v curl &>/dev/null; then
-        curl -fsSL -o "${INSTALL_DIR}/${BINARY_NAME}" "$url" || log_error "下载失败"
+        response=$(curl -s "$api_url")
     elif command -v wget &>/dev/null; then
-        wget -q -O "${INSTALL_DIR}/${BINARY_NAME}" "$url" || log_error "下载失败"
+        response=$(wget -qO- "$api_url")
     else
-        log_error "需要 curl 或 wget"
+        log_error "系统需要 curl 或 wget 才能运行"
     fi
-    
+
+    # 解析 JSON 查找下载地址
+    # 逻辑：查找 browser_download_url 且链接结尾是 asset_name 的行
+    # head -n 1 确保我们取到的是列表里最靠前（也就是最新）的那个匹配项
+    download_url=$(echo "$response" | grep -oE "\"browser_download_url\": \"[^\"]+/${asset_name}\"" | head -n 1 | cut -d '"' -f 4)
+
+    if [ -z "$download_url" ]; then
+        log_error "未找到适用于 ${os}/${arch} 的发行包 (检查了最近的 Release)"
+    fi
+
+    log_info "找到版本地址: ${download_url}"
+    log_info "开始下载..."
+
+    mkdir -p ${INSTALL_DIR}
+
+    if command -v curl &>/dev/null; then
+        curl -fsSL -o "${INSTALL_DIR}/${BINARY_NAME}" "$download_url" || log_error "下载失败"
+    elif command -v wget &>/dev/null; then
+        wget -q -O "${INSTALL_DIR}/${BINARY_NAME}" "$download_url" || log_error "下载失败"
+    fi
+
     chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
     log_ok "下载完成"
 }
+# --- 修改核心结束 ---
 
 create_env() {
     cat > "${INSTALL_DIR}/.env" << EOF
@@ -150,6 +174,7 @@ do_install() {
     
     log_info "使用端口: ${PORT}"
     
+    # 传递 os 和 arch
     download_binary "$os" "$arch"
     create_env
     
@@ -195,7 +220,10 @@ do_upgrade() {
     systemctl stop ${SERVICE_NAME} 2>/dev/null || true
     
     mv "${INSTALL_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}.bak" 2>/dev/null || true
+    
+    # 传递 os 和 arch
     download_binary "$os" "$arch"
+    
     rm -f "${INSTALL_DIR}/${BINARY_NAME}.bak"
     
     systemctl start ${SERVICE_NAME}
