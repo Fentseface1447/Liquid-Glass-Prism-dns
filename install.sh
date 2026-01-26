@@ -83,15 +83,22 @@ download_binary() {
     log_info "找到版本地址: ${download_url}"
     log_info "开始下载..."
 
-    mkdir -p ${INSTALL_DIR}
+    local temp_file="/tmp/${BINARY_NAME}.tmp"
 
     if command -v curl &>/dev/null; then
-        curl -fsSL -o "${INSTALL_DIR}/${BINARY_NAME}" "$download_url" || log_error "下载失败"
+        curl -fsSL -o "$temp_file" "$download_url" || log_error "下载失败"
     elif command -v wget &>/dev/null; then
-        wget -q -O "${INSTALL_DIR}/${BINARY_NAME}" "$download_url" || log_error "下载失败"
+        wget -q -O "$temp_file" "$download_url" || log_error "下载失败"
     fi
 
-    chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
+    if [ ! -s "$temp_file" ]; then
+        rm -f "$temp_file"
+        log_error "下载文件为空或失败"
+    fi
+
+    chmod +x "$temp_file"
+    mkdir -p ${INSTALL_DIR}
+    mv "$temp_file" "${INSTALL_DIR}/${BINARY_NAME}"
     log_ok "下载完成"
 }
 # --- 修改核心结束 ---
@@ -99,6 +106,7 @@ download_binary() {
 create_env() {
     cat > "${INSTALL_DIR}/.env" << EOF
 JWT_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+GIN_MODE=release
 EOF
     chmod 600 "${INSTALL_DIR}/.env"
 }
@@ -130,8 +138,8 @@ EOF
 }
 
 init_and_get_password() {
-    log_info "初始化数据库并获取密码..."
-    
+    log_info "初始化数据库并获取密码..." >&2
+
     cd ${INSTALL_DIR}
     
     local output=$(timeout 5 ./${BINARY_NAME} --host 127.0.0.1 --port 0 2>&1 || true)
@@ -207,25 +215,45 @@ do_install() {
     echo -e "${BLUE}[INFO]${NC} ══════════════════════════════════════════"
 }
 
+backup_data() {
+    local db_path="${INSTALL_DIR}/data.db"
+    local backup_dir="${INSTALL_DIR}/data_bak"
+
+    if [ -f "$db_path" ]; then
+        log_info "正在备份数据库..."
+        mkdir -p "$backup_dir"
+        local timestamp=$(date +%Y%m%d%H%M%S)
+        cp "$db_path" "${backup_dir}/data.db.${timestamp}"
+        log_ok "数据库已备份至: ${backup_dir}/data.db.${timestamp}"
+    fi
+}
+
 do_upgrade() {
     log_info "开始升级..."
     check_root
-    
+
     [ ! -f "${INSTALL_DIR}/${BINARY_NAME}" ] && log_error "未安装，请先安装"
-    
+
     local os=$(detect_os)
     local arch=$(detect_arch)
     local port=$(get_current_port)
-    
+
     systemctl stop ${SERVICE_NAME} 2>/dev/null || true
-    
+
+    backup_data # 添加备份步骤
+
     mv "${INSTALL_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/${BINARY_NAME}.bak" 2>/dev/null || true
     
     # 传递 os 和 arch
     download_binary "$os" "$arch"
     
     rm -f "${INSTALL_DIR}/${BINARY_NAME}.bak"
-    
+
+    if [ -f "${INSTALL_DIR}/.env" ] && ! grep -q "GIN_MODE" "${INSTALL_DIR}/.env"; then
+        log_info "更新配置文件: 添加 GIN_MODE=release"
+        echo "GIN_MODE=release" >> "${INSTALL_DIR}/.env"
+    fi
+
     systemctl start ${SERVICE_NAME}
     sleep 2
     
@@ -242,20 +270,30 @@ do_upgrade() {
 do_uninstall() {
     log_info "开始卸载..."
     check_root
-    
+
     echo ""
     echo -e "${YELLOW}将删除所有数据！确定吗? (y/N): ${NC}\c"
     read -r confirm
-    
+
     [ "$confirm" != "y" ] && [ "$confirm" != "Y" ] && { log_info "已取消"; return; }
-    
+
     systemctl stop ${SERVICE_NAME} 2>/dev/null || true
+
+    backup_data # 卸载前备份
+
     systemctl disable ${SERVICE_NAME} 2>/dev/null || true
     rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
     systemctl daemon-reload
-    rm -rf ${INSTALL_DIR}
-    
+
+    # 保留备份目录，删除其他所有文件
+    if [ -d "${INSTALL_DIR}" ]; then
+        find "${INSTALL_DIR}" -mindepth 1 -maxdepth 1 ! -name "data_bak" -exec rm -rf {} +
+    fi
+
     log_ok "卸载完成"
+    if [ -d "${INSTALL_DIR}/data_bak" ]; then
+        log_info "数据库备份已保留在: ${INSTALL_DIR}/data_bak"
+    fi
 }
 
 show_menu() {
